@@ -1,0 +1,108 @@
+import React, { useState } from 'react';
+import { ACTION } from '../../../shared/protocol.js';
+import { useGameStore } from '../store/gameStore.js';
+import { useWebSocket } from '../hooks/useWebSocket.js';
+
+export default function HomeScreen() {
+  const [tab,    setTab]    = useState('create');
+  const [name,   setName]   = useState('');
+  const [roomId, setRoomId] = useState('');
+  const [maxP,   setMaxP]   = useState(5);
+
+  const { emit }   = useWebSocket();
+  const setMyName  = useGameStore(s => s.setMyName);
+
+  function handleCreate() {
+    const n = name.trim();
+    if (!n) return;
+    setMyName(n);                                           // ✅ Zustand 정상 업데이트
+    emit(ACTION.CREATE_ROOM, { playerName: n, maxPlayers: maxP });
+  }
+
+  function handleJoin() {
+    const n = name.trim();
+    const r = roomId.trim().toUpperCase();
+    if (!n || !r) return;
+    setMyName(n);
+    emit(ACTION.JOIN_ROOM, { playerName: n, roomId: r });
+  }
+
+  function onKey(e) {
+    if (e.key === 'Enter') tab === 'create' ? handleCreate() : handleJoin();
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full gap-6 px-6">
+      {/* 타이틀 */}
+      <div className="text-center select-none">
+        <h1 className="text-5xl font-black tracking-tight drop-shadow-lg">
+          <span className="text-red-500">카드</span>{' '}
+          <span className="text-yellow-400">데스매치</span>
+        </h1>
+        <p className="text-white/40 text-sm mt-2">UNO No Mercy 온라인</p>
+      </div>
+
+      {/* 탭 */}
+      <div className="flex bg-white/10 rounded-xl p-1 w-full max-w-sm">
+        {[['create','방 만들기'],['join','방 참가']].map(([t, label]) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all
+              ${tab === t ? 'bg-blue-600 text-white shadow' : 'text-white/50 hover:text-white'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* 폼 */}
+      <div className="w-full max-w-sm flex flex-col gap-3">
+        <input
+          className="input"
+          placeholder="닉네임 (2~12자)"
+          maxLength={12}
+          value={name}
+          onChange={e => setName(e.target.value)}
+          onKeyDown={onKey}
+          autoFocus
+        />
+
+        {tab === 'create' && (
+          <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
+            <label className="text-white/60 text-sm whitespace-nowrap">최대 인원</label>
+            <input
+              type="range" min={2} max={8} value={maxP}
+              onChange={e => setMaxP(Number(e.target.value))}
+              className="flex-1 accent-blue-500"
+            />
+            <span className="text-blue-400 font-black text-lg w-6 text-center">{maxP}</span>
+          </div>
+        )}
+
+        {tab === 'join' && (
+          <input
+            className="input uppercase tracking-[0.4em] text-center text-lg font-bold"
+            placeholder="방 코드 6자리"
+            maxLength={6}
+            value={roomId}
+            onChange={e => setRoomId(e.target.value.toUpperCase())}
+            onKeyDown={onKey}
+          />
+        )}
+
+        <button
+          className="btn-primary w-full py-4 text-lg font-black"
+          onClick={tab === 'create' ? handleCreate : handleJoin}
+          disabled={!name.trim() || (tab === 'join' && roomId.trim().length < 6)}
+        >
+          {tab === 'create' ? '방 만들기 →' : '참가하기 →'}
+        </button>
+      </div>
+
+      <p className="text-white/20 text-xs">
+        링크 공유만으로 친구와 바로 플레이
+      </p>
+    </div>
+  );
+}
