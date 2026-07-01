@@ -274,12 +274,15 @@ export class GameState {
   //  색 선택 (와일드 후)
   // ─────────────────────────────────────────────
   chooseColor(playerId, color) {
-    if (this.currentPlayer.id !== playerId) return errCode(ERROR_CODE.NOT_YOUR_TURN);
     if (!this.waitingFor?.includes('color')) return err('색 선택이 필요하지 않습니다');
+
+    const isRoulette = this.waitingFor === 'roulette_color';
+    // 룰렛은 공격받는 대상(다음 사람)이, 일반 와일드는 현재 플레이어가 색을 정한다
+    const chooserId = isRoulette ? this.rouletteTargetId : this.currentPlayer.id;
+    if (chooserId !== playerId) return errCode(ERROR_CODE.NOT_YOUR_TURN);
     if (!Object.values(COLOR).includes(color) || color === COLOR.WILD)
       return err('유효하지 않은 색');
 
-    const isRoulette = this.waitingFor === 'roulette_color';
     this.currentColor = color;
     this.waitingFor   = null;
 
@@ -290,11 +293,11 @@ export class GameState {
       const target = this.playerById(this.rouletteTargetId);
       events.push({ type: 'revealHand', targetId: target.id, hand: target.hand });
       this.rouletteTargetId = null;
-      this._advanceTurn(2);  // 색 선택자 스킵
+      this._advanceTurn(2);  // 색 정한 사람(다음 사람)을 건너뛴다
     } else {
-      // 일반 와일드: 드로우 카드면 다음 사람이 뽑아야 함
-      const delta = this.pendingDraw ? 2 : 1;
-      this._advanceTurn(delta);
+      // 일반 와일드: 바로 다음 사람이 currentPlayer가 됨.
+      // 드로우 카드였다면 그 사람이 pendingDraw를 받는다(건너뛰지 않음).
+      this._advanceTurn(1);
     }
 
     this._checkWin() && events.push({ type: 'gameOver' });
@@ -404,6 +407,7 @@ export class GameState {
       pendingDraw:   this.pendingDraw,
       waitingFor:    this.waitingFor,
       currentPlayerId: this.currentPlayer?.id,
+      rouletteTargetId: this.rouletteTargetId,
       turnStartedAt: this.turnStartedAt,
       winnerId:      this.winnerId,
       players: this.players.map(p => ({

@@ -86,7 +86,7 @@ export function computeEffects(card, currentDirection, pendingDraw) {
       effects.drawCount  = 2;
       effects.sourceType = CARD_TYPE.DRAW_TWO;
       effects.stackedDrawCount += 2;
-      effects.nextTurnDelta = 2;  // 뽑고 스킵
+      effects.nextTurnDelta = 1;  // 바로 다음 사람이 받음(뽑으면 자연히 턴 종료=스킵)
       break;
 
     case CARD_TYPE.WILD:
@@ -98,7 +98,7 @@ export function computeEffects(card, currentDirection, pendingDraw) {
       effects.sourceType = CARD_TYPE.WILD_DRAW_FOUR;
       effects.stackedDrawCount += 4;
       effects.colorChoiceNeeded = true;
-      effects.nextTurnDelta = 2;
+      effects.nextTurnDelta = 1;  // 색 선택 후 chooseColor가 턴 이동 담당(다음 사람이 받음)
       break;
 
     case CARD_TYPE.WILD_REVERSE_DRAW_FOUR:
@@ -107,7 +107,7 @@ export function computeEffects(card, currentDirection, pendingDraw) {
       effects.stackedDrawCount += 4;
       effects.directionFlip = true;
       effects.colorChoiceNeeded = true;
-      effects.nextTurnDelta = 2;
+      effects.nextTurnDelta = 1;  // 색 선택 후 chooseColor가 턴 이동 담당(다음 사람이 받음)
       break;
 
     case CARD_TYPE.WILD_DRAW_SIX:
@@ -115,7 +115,7 @@ export function computeEffects(card, currentDirection, pendingDraw) {
       effects.sourceType = CARD_TYPE.WILD_DRAW_SIX;
       effects.stackedDrawCount += 6;
       effects.colorChoiceNeeded = true;
-      effects.nextTurnDelta = 2;
+      effects.nextTurnDelta = 1;  // 색 선택 후 chooseColor가 턴 이동 담당(다음 사람이 받음)
       break;
 
     case CARD_TYPE.WILD_DRAW_TEN:
@@ -123,7 +123,7 @@ export function computeEffects(card, currentDirection, pendingDraw) {
       effects.sourceType = CARD_TYPE.WILD_DRAW_TEN;
       effects.stackedDrawCount += 10;
       effects.colorChoiceNeeded = true;
-      effects.nextTurnDelta = 2;
+      effects.nextTurnDelta = 1;  // 색 선택 후 chooseColor가 턴 이동 담당(다음 사람이 받음)
       break;
 
     case CARD_TYPE.WILD_COLOR_ROULETTE:
