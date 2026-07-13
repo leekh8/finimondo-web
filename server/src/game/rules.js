@@ -18,9 +18,12 @@ export function canPlay(card, topCard, currentColor, pendingDraw) {
   // ── 와일드 계열은 항상 낼 수 있음 (챌린지 없음) ─────────────
   if (isWild(card)) return true;
 
-  // ── 같은 색 또는 같은 숫자/타입 ────────────────────────────
+  // ── 같은 색 ────────────────────────────────────────────────
   if (card.color === currentColor) return true;
-  if (card.type === topCard.type) return true;
+  // ── 액션 카드(숫자 아님)는 같은 타입끼리 매치 (스킵↔스킵 등) ──
+  //    숫자는 '둘 다 NUMBER'가 아니라 '값이 같을 때만' 매치해야 하므로 NUMBER 제외
+  if (card.type !== CARD_TYPE.NUMBER && card.type === topCard.type) return true;
+  // ── 숫자 카드는 값이 같으면 매치 ──────────────────────────
   if (card.type === CARD_TYPE.NUMBER && topCard.type === CARD_TYPE.NUMBER
       && card.value === topCard.value) return true;
 
