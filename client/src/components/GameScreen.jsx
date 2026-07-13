@@ -151,11 +151,16 @@ export default function GameScreen() {
               <span className={['text-xs max-w-[56px] truncate', p.eliminated ? 'line-through text-white/30' : 'text-white/80'].join(' ')}>
                 {p.name}
               </span>
-              <div className="flex flex-wrap justify-center gap-0.5 max-w-[72px]">
-                {Array.from({ length: Math.min(p.handCount, 7) }).map((_, i) => (
-                  <CardBack key={i} size="sm" />
+              {/* 상대 손패 — 가로 오버랩 팬(인원 무관 컴팩트, 다인 확장) */}
+              <div className="flex justify-center items-center h-[58px]">
+                {Array.from({ length: Math.min(p.handCount, 5) }).map((_, i) => (
+                  <div key={i} style={{ marginLeft: i === 0 ? 0 : -24 }}>
+                    <CardBack size="sm" />
+                  </div>
                 ))}
-                {p.handCount > 7 && <span className="text-white/40 text-[10px] self-center">+{p.handCount - 7}</span>}
+                {p.handCount > 5 && (
+                  <span className="text-white/50 text-[11px] font-bold ml-1 self-center">+{p.handCount - 5}</span>
+                )}
               </div>
               <span className={['text-xs font-bold',
                 p.handCount >= 20 ? 'text-red-400 animate-pulse' : p.handCount <= 1 ? 'text-yellow-400' : 'text-white/50'].join(' ')}>
