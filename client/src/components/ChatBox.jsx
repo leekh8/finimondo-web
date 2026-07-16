@@ -38,13 +38,13 @@ export default function ChatBox() {
       {!chatOpen && (
         <button
           onClick={openChat}
-          className="fixed bottom-4 right-4 z-40 w-12 h-12 bg-blue-600 rounded-full shadow-xl
-                     flex items-center justify-center text-xl hover:bg-blue-500 active:scale-95 transition-all"
+          className="fixed bottom-4 right-4 z-40 w-12 h-12 bg-plasma/80 rounded-full shadow-neon-plasma
+                     flex items-center justify-center text-xl hover:bg-plasma active:scale-95 transition-all"
         >
           {chatUnread > 0
             ? <span className="relative">
                 💬
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold
+                <span className="absolute -top-1 -right-1 bg-ember text-white text-[10px] font-bold
                                   w-4 h-4 rounded-full flex items-center justify-center">
                   {chatUnread > 9 ? '9+' : chatUnread}
                 </span>
@@ -87,7 +87,7 @@ export default function ChatBox() {
                         <span className="text-white/50 text-[10px] mb-0.5">{msg.name}</span>
                       )}
                       <div className={['px-2 py-1 rounded-xl text-sm break-words',
-                        msg.playerId === myId ? 'bg-blue-600 rounded-tr-none' : 'bg-white/10 rounded-tl-none'].join(' ')}>
+                        msg.playerId === myId ? 'bg-plasma/80 rounded-tr-none' : 'bg-white/10 rounded-tl-none'].join(' ')}>
                         {msg.message}
                       </div>
                     </div>
@@ -112,7 +112,7 @@ export default function ChatBox() {
             <button
               onClick={send}
               disabled={!input.trim()}
-              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 px-3 rounded-lg text-sm font-bold active:scale-95 transition-all"
+              className="bg-plasma/80 hover:bg-plasma disabled:opacity-40 px-3 rounded-lg text-sm font-bold active:scale-95 transition-all"
             >
               &rarr;
             </button>

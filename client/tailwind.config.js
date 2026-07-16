@@ -4,18 +4,32 @@ export default {
   theme: {
     extend: {
       colors: {
+        // 종말(cataclysm) 네온 팔레트
+        ash:    '#0B0A0F',   // 딥 다크 배경
+        ember:  '#FF4A26',   // 불
+        plasma: '#B24BFF',   // 번개
+        abyss:  '#23D3C0',   // 해일
+        sulfur: '#CBF24B',   // 독
+        // 카드 4색 렌더 매핑 (enum은 RED/GREEN/BLUE/YELLOW 유지, 표시 색만 팔레트)
+        //   RED→Ember · BLUE→Plasma · GREEN→Abyss · YELLOW→Sulfur
         card: {
-          red:    '#e74c3c',
-          green:  '#27ae60',
-          blue:   '#2980b9',
-          yellow: '#f1c40f',
-          wild:   '#8e44ad',
+          red:    '#FF4A26',  // Ember
+          green:  '#23D3C0',  // Abyss
+          blue:   '#B24BFF',  // Plasma
+          yellow: '#CBF24B',  // Sulfur
+          wild:   '#9B5DE5',  // 다색(대표 바이올렛)
         },
         bg: {
-          dark:  '#1a1a2e',
-          panel: '#16213e',
-          card:  '#0f3460',
+          dark:  '#0B0A0F',   // Ash
+          panel: '#14121C',
+          card:  '#1E1B29',
         },
+      },
+      boxShadow: {
+        'neon-ember':  '0 0 24px -6px rgba(255,74,38,0.65)',
+        'neon-plasma': '0 0 24px -6px rgba(178,75,255,0.60)',
+        'neon-abyss':  '0 0 24px -6px rgba(35,211,192,0.55)',
+        'neon-sulfur': '0 0 24px -6px rgba(203,242,75,0.55)',
       },
       animation: {
         'card-play':    'cardPlay 0.35s cubic-bezier(0.34,1.56,0.64,1)',

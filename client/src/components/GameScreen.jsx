@@ -8,10 +8,12 @@ import TurnTimer from './TurnTimer.jsx';
 import ColorPicker from './ColorPicker.jsx';
 import SwapPicker from './SwapPicker.jsx';
 import ChatBox from './ChatBox.jsx';
+import RulesModal from './RulesModal.jsx';
 
+// 현재 색 표시 점 — 카드 렌더 팔레트와 동일(RED→Ember 등)
 const COLOR_DOT = {
-  red: 'bg-red-500', green: 'bg-green-500',
-  blue: 'bg-blue-500', yellow: 'bg-yellow-400', wild: 'bg-purple-500',
+  red: 'bg-card-red', green: 'bg-card-green',
+  blue: 'bg-card-blue', yellow: 'bg-card-yellow', wild: 'bg-card-wild',
 };
 
 export default function GameScreen() {
@@ -32,6 +34,7 @@ export default function GameScreen() {
   const [pendingCardId,    setPendingCardId]     = useState(null);
   const [playingCardId,    setPlayingCardId]     = useState(null);
   const [drawAnim,         setDrawAnim]          = useState(false);
+  const [showRules,        setShowRules]         = useState(false);
 
   const prevTurnId = useRef(null);
   const prevHandLen = useRef(null);
@@ -56,7 +59,7 @@ export default function GameScreen() {
     prevTurnId.current = game.currentPlayerId;
   }, [game.currentPlayerId]);
 
-  // 카드 뇽기 사운드 + 애니
+  // 카드 뽑기 사운드 + 애니
   useEffect(() => {
     if (!me) return;
     if (prevHandLen.current !== null && me.hand.length > prevHandLen.current) {
@@ -163,9 +166,9 @@ export default function GameScreen() {
                 )}
               </div>
               <span className={['text-xs font-bold',
-                p.handCount >= 20 ? 'text-red-400 animate-pulse' : p.handCount <= 1 ? 'text-yellow-400' : 'text-white/50'].join(' ')}>
+                p.handCount >= 20 ? 'text-ember animate-pulse' : p.handCount <= 1 ? 'text-sulfur' : 'text-white/50'].join(' ')}>
                 {p.handCount}장
-                {p.handCount === 1 && ' UNO!'}
+                {p.handCount === 1 && ' ULTIMA!'}
               </span>
             </div>
           );
@@ -214,15 +217,15 @@ export default function GameScreen() {
 
       <div className="px-3 py-1 text-center text-xs min-h-[18px]">
         {isMyTurn && !game.waitingFor && (
-          <span className="text-yellow-400 font-bold animate-fade-in">
-            내 차례 — 카드 탭 후 다시 탭해서 냕니다
+          <span className="text-sulfur font-bold animate-fade-in">
+            내 차례 — 카드를 탭해 선택하고, 다시 탭하면 냅니다
           </span>
         )}
         {isMyTurn && game.waitingFor === 'swap' && (
-          <span className="text-orange-400 font-bold">교환할 플레이어를 선택하세요</span>
+          <span className="text-ember font-bold">교환할 플레이어를 선택하세요</span>
         )}
         {isMyTurn && game.waitingFor === 'color' && (
-          <span className="text-purple-400 font-bold">색을 선택하세요</span>
+          <span className="text-plasma font-bold">색을 선택하세요</span>
         )}
         {!isMyTurn && (
           <span className="text-white/40">
@@ -231,18 +234,23 @@ export default function GameScreen() {
         )}
       </div>
 
+      {/* 상시 조작 힌트 */}
+      <div className="px-3 pb-0.5 text-center text-[10px] text-white/30 leading-tight">
+        카드 탭→선택 · 다시 탭→내기 · 덱 탭→뽑기 · 와일드→색 선택
+      </div>
+
       <div>
         {dangerLevel !== 'ok' && me && (
           <div className={['text-center text-xs font-bold py-0.5 animate-pulse',
-            dangerLevel === 'critical' ? 'text-red-400' : 'text-yellow-400'].join(' ')}>
+            dangerLevel === 'critical' ? 'text-ember' : 'text-sulfur'].join(' ')}>
           {dangerLevel === 'critical'
             ? `⚠️ ${me.handCount}장 — ${25 - me.handCount}장 더 받으면 탈락!`
             : `${me.handCount}장 — 주의 필요!`}
           </div>
         )}
         {myHand.length === 1 && (
-          <div className="text-center text-yellow-400 font-black text-sm animate-bounce">
-            UNO!
+          <div className="text-center text-sulfur font-black text-sm animate-bounce tracking-widest">
+            ULTIMA!
           </div>
         )}
         <div className="flex overflow-x-auto gap-1.5 px-2 pb-4 pt-1" style={{ scrollbarWidth: 'none' }}>
@@ -278,6 +286,11 @@ export default function GameScreen() {
       </div>
 
       <div className="absolute top-2 right-2 flex gap-2 z-10">
+        <button onClick={() => setShowRules(true)}
+          className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm transition-all"
+          title="규칙 · 카드 설명">
+          ❓
+        </button>
         <button onClick={toggleSound}
           className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm transition-all"
           title={soundEnabled ? '소리 끌기' : '소리 켜기'}>
@@ -311,6 +324,8 @@ export default function GameScreen() {
       )}
 
       <ChatBox />
+
+      {showRules && <RulesModal onClose={() => setShowRules(false)} />}
     </div>
   );
 }

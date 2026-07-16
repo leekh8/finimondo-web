@@ -8,11 +8,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: '카드 데스매치',
-        short_name: '데스매치',
-        description: '친구들과 즐기는 온라인 카드 데스매치',
-        theme_color: '#1a1a2e',
-        background_color: '#1a1a2e',
+        name: 'Finimondo',
+        short_name: 'Finimondo',
+        description: '종말의 카드게임 — 링크 하나로 친구와 온라인 플레이',
+        theme_color: '#0B0A0F',
+        background_color: '#0B0A0F',
         display: 'standalone',
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },

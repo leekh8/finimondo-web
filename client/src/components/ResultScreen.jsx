@@ -35,8 +35,10 @@ export default function ResultScreen() {
       {/* 결과 헤더 */}
       <div className="text-center">
         <div className="text-6xl mb-2">{isWinner ? '🏆' : '💀'}</div>
-        <h1 className="text-2xl font-black">
-          {isWinner ? '승리!' : '패배...'}
+        <h1 className="text-3xl font-black tracking-tight">
+          {isWinner
+            ? <span className="bg-gradient-to-r from-ember via-sulfur to-abyss bg-clip-text text-transparent">최후의 생존</span>
+            : <span className="text-white/70">종말...</span>}
         </h1>
         {winner && (
           <p className="text-white/60 mt-1">
@@ -51,7 +53,7 @@ export default function ResultScreen() {
         {ranked.map((p, i) => (
           <div key={p.id}
             className={`flex items-center gap-3 px-4 py-3 border-t border-white/10
-              ${p.id === myId ? 'bg-blue-600/20' : ''}`}
+              ${p.id === myId ? 'bg-plasma/15' : ''}`}
           >
             <span className="text-lg font-black w-6 text-center">
               {p.id === game?.winnerId ? '🥇' : p.eliminated ? '💀' : `${i + 1}`}

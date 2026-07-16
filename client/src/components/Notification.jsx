@@ -1,9 +1,9 @@
 import React from 'react';
 
 const TYPE_STYLE = {
-  info:  'bg-blue-600',
-  warn:  'bg-yellow-500 text-black',
-  error: 'bg-red-600',
+  info:  'bg-plasma/90',
+  warn:  'bg-sulfur text-black',
+  error: 'bg-ember',
 };
 
 export default function Notification({ msg, type = 'info' }) {

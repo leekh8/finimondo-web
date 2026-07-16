@@ -4,27 +4,38 @@
 
 @layer base {
   body {
-    @apply bg-bg-dark text-white min-h-screen overflow-hidden;
-    font-family: 'Segoe UI', sans-serif;
+    @apply text-white min-h-screen overflow-hidden;
+    background-color: #0B0A0F; /* Ash */
+    /* 종말 분위기: 모서리에서 스며드는 불·번개·해일 글로우 */
+    background-image:
+      radial-gradient(60% 55% at 12% -5%, rgba(255,74,38,0.10) 0%, transparent 60%),
+      radial-gradient(55% 50% at 105% 15%, rgba(178,75,255,0.12) 0%, transparent 60%),
+      radial-gradient(60% 55% at 50% 115%, rgba(35,211,192,0.08) 0%, transparent 60%);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     -webkit-tap-highlight-color: transparent;
   }
+  h1, h2 { letter-spacing: -0.02em; }
 }
 
 @layer components {
   .btn {
-    @apply px-4 py-2 rounded-lg font-bold transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply px-4 py-2 rounded-xl font-bold transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply btn bg-blue-600 hover:bg-blue-500;
+    @apply btn text-white;
+    background-image: linear-gradient(135deg, #FF4A26 0%, #B24BFF 100%);
+    box-shadow: 0 0 22px -6px rgba(255,74,38,0.7);
   }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
   .btn-danger {
-    @apply btn bg-red-600 hover:bg-red-500;
+    @apply btn text-white;
+    background-image: linear-gradient(135deg, #FF4A26 0%, #922b21 100%);
   }
   .btn-ghost {
-    @apply btn border border-white/20 hover:bg-white/10;
+    @apply btn border border-white/15 bg-white/5 hover:bg-white/10 hover:border-white/25;
   }
   .input {
-    @apply w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20
-           focus:outline-none focus:border-blue-400 placeholder:text-white/40;
+    @apply w-full px-3 py-2 rounded-xl bg-white/[0.06] border border-white/15
+           focus:outline-none focus:border-ember/70 placeholder:text-white/30 transition-colors;
   }
 }

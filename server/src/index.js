@@ -50,5 +50,5 @@ wss.on('close', () => clearInterval(heartbeat));
 // ── 시작 ────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-  console.log(`🚀 UNO 데스매치 서버 실행 중 → http://localhost:${PORT}`);
+  console.log(`🚀 Finimondo 서버 실행 중 → http://localhost:${PORT}`);
 });

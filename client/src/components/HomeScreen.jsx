@@ -2,12 +2,28 @@ import React, { useState } from 'react';
 import { ACTION } from '../../../shared/protocol.js';
 import { useGameStore } from '../store/gameStore.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
+import RulesModal from './RulesModal.jsx';
+
+// 초대 링크(?room=ABC123)로 진입한 경우 방 코드를 읽어 검증한다.
+// 유효한 6자리(A-Z0-9)만 통과, 아니면 빈 문자열.
+function readRoomFromUrl() {
+  try {
+    const raw = new URLSearchParams(window.location.search).get('room');
+    if (!raw) return '';
+    const code = raw.trim().toUpperCase();
+    return /^[A-Z0-9]{6}$/.test(code) ? code : '';
+  } catch {
+    return '';
+  }
+}
 
 export default function HomeScreen() {
-  const [tab,    setTab]    = useState('create');
+  const [initialRoom]       = useState(readRoomFromUrl);   // 최초 1회만 평가
+  const [tab,    setTab]    = useState(initialRoom ? 'join' : 'create');
   const [name,   setName]   = useState('');
-  const [roomId, setRoomId] = useState('');
+  const [roomId, setRoomId] = useState(initialRoom);
   const [maxP,   setMaxP]   = useState(5);
+  const [showRules, setShowRules] = useState(false);
 
   const { emit }   = useWebSocket();
   const setMyName  = useGameStore(s => s.setMyName);
@@ -35,11 +51,12 @@ export default function HomeScreen() {
     <div className="flex flex-col items-center justify-center h-full gap-6 px-6">
       {/* 타이틀 */}
       <div className="text-center select-none">
-        <h1 className="text-5xl font-black tracking-tight drop-shadow-lg">
-          <span className="text-red-500">카드</span>{' '}
-          <span className="text-yellow-400">데스매치</span>
+        <h1 className="text-6xl font-black tracking-tighter drop-shadow-lg">
+          <span className="bg-gradient-to-br from-ember via-plasma to-abyss bg-clip-text text-transparent">
+            FINIMONDO
+          </span>
         </h1>
-        <p className="text-white/40 text-sm mt-2">UNO No Mercy 온라인</p>
+        <p className="text-white/40 text-sm mt-2 tracking-[0.35em] uppercase">종말의 카드게임</p>
       </div>
 
       {/* 탭 */}
@@ -49,7 +66,7 @@ export default function HomeScreen() {
             key={t}
             onClick={() => setTab(t)}
             className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all
-              ${tab === t ? 'bg-blue-600 text-white shadow' : 'text-white/50 hover:text-white'}`}
+              ${tab === t ? 'bg-plasma/80 text-white shadow-neon-plasma' : 'text-white/50 hover:text-white'}`}
           >
             {label}
           </button>
@@ -81,14 +98,21 @@ export default function HomeScreen() {
         )}
 
         {tab === 'join' && (
-          <input
-            className="input uppercase tracking-[0.4em] text-center text-lg font-bold"
-            placeholder="방 코드 6자리"
-            maxLength={6}
-            value={roomId}
-            onChange={e => setRoomId(e.target.value.toUpperCase())}
-            onKeyDown={onKey}
-          />
+          <>
+            {initialRoom && (
+              <p className="text-green-400/80 text-xs text-center -mb-1">
+                초대 링크로 입장 — 닉네임만 입력하면 바로 참가돼요
+              </p>
+            )}
+            <input
+              className="input uppercase tracking-[0.4em] text-center text-lg font-bold"
+              placeholder="방 코드 6자리"
+              maxLength={6}
+              value={roomId}
+              onChange={e => setRoomId(e.target.value.toUpperCase())}
+              onKeyDown={onKey}
+            />
+          </>
         )}
 
         <button
@@ -100,9 +124,18 @@ export default function HomeScreen() {
         </button>
       </div>
 
+      <button
+        onClick={() => setShowRules(true)}
+        className="text-white/50 hover:text-white text-sm font-semibold transition-colors"
+      >
+        ❓ 규칙 · 카드 설명
+      </button>
+
       <p className="text-white/20 text-xs">
         링크 공유만으로 친구와 바로 플레이
       </p>
+
+      {showRules && <RulesModal onClose={() => setShowRules(false)} />}
     </div>
   );
 }
