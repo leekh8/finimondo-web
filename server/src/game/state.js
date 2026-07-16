@@ -15,6 +15,7 @@ export class GameState {
       connected: true,
       order:     i,
       eliminated: false,
+      isBot:     p.isBot ?? false,
     }));
     this.deck         = [];
     this.discardPile  = [];
@@ -416,6 +417,7 @@ export class GameState {
         handCount:  p.hand.length,
         eliminated: p.eliminated,
         connected:  p.connected,
+        isBot:      p.isBot ?? false,
         // 본인 손패만 전체 공개
         hand:       p.id === forPlayerId ? p.hand : undefined,
       })),

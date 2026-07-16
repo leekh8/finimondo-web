@@ -36,6 +36,20 @@ export class Room {
     return { ok: true, token };
   }
 
+  /**
+   * AI 봇 플레이어 추가 (solo 모드). 봇은 ws 연결이 없으며 isBot:true 로 식별.
+   */
+  addBot(name) {
+    if (this.status !== GAME_STATUS.LOBBY)
+      return { ok: false, code: ERROR_CODE.GAME_ALREADY_STARTED };
+    if (this.isFull)
+      return { ok: false, code: ERROR_CODE.ROOM_FULL };
+
+    const id = `bot_${this.players.length}_${genCode()}`;
+    this.players.push({ id, name, isBot: true, token: genCode(16) });
+    return { ok: true, id };
+  }
+
   startGame(requesterId) {
     if (requesterId !== this.hostId)
       return { ok: false, code: ERROR_CODE.NOT_HOST };

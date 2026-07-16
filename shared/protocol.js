@@ -3,7 +3,7 @@
 // ==============================
 export const ACTION = {
   JOIN_ROOM:    'JOIN_ROOM',    // { roomId, playerName }
-  CREATE_ROOM:  'CREATE_ROOM',  // { playerName, maxPlayers }
+  CREATE_ROOM:  'CREATE_ROOM',  // { playerName, maxPlayers }  또는 혼자하기: { playerName, solo:true, botCount }
   START_GAME:   'START_GAME',   // {}  (host only)
   PLAY_CARD:    'PLAY_CARD',    // { cardId, chosenColor? }
   DRAW_CARD:    'DRAW_CARD',    // {}

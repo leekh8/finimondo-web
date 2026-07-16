@@ -1,4 +1,12 @@
 import { ACTION, EVENT, CONFIG, ERROR_CODE } from '../../../shared/protocol.js';
+import { computeBotMove, chooseBotColor, chooseBotSwapTarget } from '../game/bot.js';
+
+// 봇이 수를 두기 전 딜레이(ms) — "AI가 두는 게 보이게" + 봇 연쇄 턴 텀
+const BOT_MIN_DELAY = 800;
+const BOT_MAX_DELAY = 1500;
+function botDelay() {
+  return BOT_MIN_DELAY + Math.floor(Math.random() * (BOT_MAX_DELAY - BOT_MIN_DELAY));
+}
 
 export function handleMessage(ws, rawData, rooms, clients) {
   let msg;
@@ -21,13 +29,38 @@ export function handleMessage(ws, rawData, rooms, clients) {
 }
 
 function onCreateRoom(ws, payload, rooms, clients) {
-  const { playerName, maxPlayers = CONFIG.DEFAULT_PLAYERS } = payload;
+  const { playerName, maxPlayers = CONFIG.DEFAULT_PLAYERS, solo = false, botCount = 0 } = payload;
   if (!playerName) return send(ws, EVENT.ERROR, { message: 'playerName 필요' });
+
+  // ── 혼자 하기(AI 봇) ─────────────────────────────────────
+  if (solo) return onCreateSolo(ws, playerName, botCount, rooms, clients);
+
   const playerId = genId();
   const room     = rooms.create(playerId, playerName, maxPlayers);
   const player   = room.playerById(playerId);
   clients.set(ws, { playerId, roomId: room.id });
   send(ws, EVENT.ROOM_CREATED, { roomId: room.id, playerId, token: player.token, isHost: true, players: room.players.map(lobbyPlayer), maxPlayers: room.maxPlayers });
+}
+
+/**
+ * 혼자 하기: 방 생성 → 봇 N명 채움 → 로비 대기 없이 즉시 시작 → GameScreen 진입.
+ */
+function onCreateSolo(ws, playerName, botCount, rooms, clients) {
+  const n     = Math.min(Math.max(Number(botCount) || 1, 1), CONFIG.MAX_PLAYERS - 1);
+  const total = n + 1; // 사람 1 + 봇 n
+  const playerId = genId();
+  const room     = rooms.create(playerId, playerName, total);
+  for (let i = 1; i <= n; i++) room.addBot(`AI ${i}`);
+
+  const player = room.playerById(playerId);
+  clients.set(ws, { playerId, roomId: room.id });
+  send(ws, EVENT.ROOM_CREATED, { roomId: room.id, playerId, token: player.token, isHost: true, players: room.players.map(lobbyPlayer), maxPlayers: room.maxPlayers, solo: true });
+
+  const started = room.startGame(playerId);
+  if (!started.ok) return send(ws, EVENT.ERROR, { code: started.code, message: started.message });
+  broadcastGameStart(room, clients);
+  startTurnTimer(room, clients);
+  driveBots(room, clients);
 }
 
 function onJoinRoom(ws, payload, rooms, clients) {
@@ -146,13 +179,73 @@ function afterAction(room, clients, events = [], actorId) {
     send(ws, EVENT.STATE_SNAPSHOT, { state: room.game.snapshot(ctx.playerId), lastAction: { actorId, topCard: room.game.topCard, events } });
   }
   if (isOver) {
+    if (room._botTimer) { clearTimeout(room._botTimer); room._botTimer = null; }
     const winner = room.game.playerById(room.game.winnerId);
     broadcastRoomAll(room, clients, EVENT.GAME_OVER, { winnerId: room.game.winnerId, winnerName: winner?.name });
     broadcastRoomAll(room, clients, EVENT.CHAT_MESSAGE, { playerId: 'system', name: '시스템', message: `🏆 ${winner?.name}님이 승리했습니다!`, ts: Date.now(), system: true });
     room.status = 'ended';
   } else {
     startTurnTimer(room, clients);
+    driveBots(room, clients);
   }
+}
+
+// ─────────────────────────────────────────────────────────
+//  AI 봇 자동 턴 처리
+// ─────────────────────────────────────────────────────────
+
+/** 다음에 행동해야 할(봇일 수도 있는) 플레이어 id */
+function pendingActorId(game) {
+  if (!game) return null;
+  // 룰렛은 공격받는 대상(다음 사람)이 색을 정한다
+  if (game.waitingFor === 'roulette_color') return game.rouletteTargetId;
+  return game.currentPlayer?.id ?? null;
+}
+
+/** 현재 행동 차례가 봇이면 딜레이 후 자동으로 수를 두도록 예약 */
+function driveBots(room, clients) {
+  const game = room.game;
+  if (!game || game.status !== 'playing') return;
+  const actorId = pendingActorId(game);
+  if (!actorId) return;
+  const actor = game.playerById(actorId);
+  if (!actor || !actor.isBot || actor.eliminated) return;
+
+  if (room._botTimer) clearTimeout(room._botTimer);
+  room._botTimer = setTimeout(() => {
+    room._botTimer = null;
+    performBotAction(room, clients);
+  }, botDelay());
+}
+
+/** 봇의 실제 수를 기존 GameState 함수로 실행하고 결과를 방송 */
+function performBotAction(room, clients) {
+  const game = room.game;
+  if (!game || game.status !== 'playing') return;
+  const actorId = pendingActorId(game);
+  if (!actorId) return;
+  const actor = game.playerById(actorId);
+  if (!actor || !actor.isBot || actor.eliminated) return;
+
+  let result;
+  if (game.waitingFor === 'swap') {
+    result = game.chooseSwap(actorId, chooseBotSwapTarget(game, actorId));
+  } else if (game.waitingFor === 'color' || game.waitingFor === 'roulette_color') {
+    result = game.chooseColor(actorId, chooseBotColor(actor.hand));
+  } else {
+    const move = computeBotMove(game, actorId);
+    result = move.kind === 'play'
+      ? game.playCard(actorId, move.cardId, move.chosenColor ?? null)
+      : game.drawCard(actorId);
+  }
+
+  // 안전장치: 봇 수가 어떤 이유로 막히면 강제로 드로우해 턴을 넘겨 교착을 막는다.
+  if (!result || !result.ok) {
+    if (game.waitingFor) return; // 대기 상태에서 실패는 이론상 불가(유효 입력 보장)
+    result = game.drawCard(actorId);
+    if (!result || !result.ok) return;
+  }
+  afterAction(room, clients, result.events ?? [], actorId);
 }
 
 function broadcastGameStart(room, clients) {
