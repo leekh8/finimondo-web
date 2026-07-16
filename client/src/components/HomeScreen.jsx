@@ -23,6 +23,7 @@ export default function HomeScreen() {
   const [name,   setName]   = useState('');
   const [roomId, setRoomId] = useState(initialRoom);
   const [maxP,   setMaxP]   = useState(5);
+  const [soloTotal, setSoloTotal] = useState(4);   // 사람1 + 봇(soloTotal-1)
   const [showRules, setShowRules] = useState(false);
 
   const { emit }   = useWebSocket();
@@ -43,8 +44,22 @@ export default function HomeScreen() {
     emit(ACTION.JOIN_ROOM, { playerName: n, roomId: r });
   }
 
+  function handleSolo() {
+    const n = name.trim();
+    if (!n) return;
+    setMyName(n);
+    // 사람 1 + 봇(soloTotal-1) — 서버가 봇을 채우고 자동 시작한다
+    emit(ACTION.CREATE_ROOM, { playerName: n, solo: true, botCount: soloTotal - 1 });
+  }
+
+  function handleSubmit() {
+    if (tab === 'create') return handleCreate();
+    if (tab === 'solo')   return handleSolo();
+    return handleJoin();
+  }
+
   function onKey(e) {
-    if (e.key === 'Enter') tab === 'create' ? handleCreate() : handleJoin();
+    if (e.key === 'Enter') handleSubmit();
   }
 
   return (
@@ -61,7 +76,7 @@ export default function HomeScreen() {
 
       {/* 탭 */}
       <div className="flex bg-white/10 rounded-xl p-1 w-full max-w-sm">
-        {[['create','방 만들기'],['join','방 참가']].map(([t, label]) => (
+        {[['create','방 만들기'],['solo','혼자 하기'],['join','방 참가']].map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -97,6 +112,23 @@ export default function HomeScreen() {
           </div>
         )}
 
+        {tab === 'solo' && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
+              <label className="text-white/60 text-sm whitespace-nowrap">AI 포함 인원</label>
+              <input
+                type="range" min={2} max={8} value={soloTotal}
+                onChange={e => setSoloTotal(Number(e.target.value))}
+                className="flex-1 accent-plasma"
+              />
+              <span className="text-plasma font-black text-lg w-6 text-center">{soloTotal}</span>
+            </div>
+            <p className="text-white/40 text-xs text-center">
+              나 1명 + 🤖 AI {soloTotal - 1}명 · 대기 없이 바로 시작
+            </p>
+          </div>
+        )}
+
         {tab === 'join' && (
           <>
             {initialRoom && (
@@ -117,10 +149,10 @@ export default function HomeScreen() {
 
         <button
           className="btn-primary w-full py-4 text-lg font-black"
-          onClick={tab === 'create' ? handleCreate : handleJoin}
+          onClick={handleSubmit}
           disabled={!name.trim() || (tab === 'join' && roomId.trim().length < 6)}
         >
-          {tab === 'create' ? '방 만들기 →' : '참가하기 →'}
+          {tab === 'create' ? '방 만들기 →' : tab === 'solo' ? '🤖 AI와 시작 →' : '참가하기 →'}
         </button>
       </div>
 
