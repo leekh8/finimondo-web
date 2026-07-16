@@ -1,0 +1,29 @@
+# Render Blueprint — UNO 데스매치 (finimondo-web)
+# 단일 Web Service: Node ws 서버가 WebSocket + 빌드된 클라이언트(정적)를 같은 포트에서 서빙.
+# Render는 이 파일을 읽어 Blueprint로 서비스를 생성한다.
+# 참고: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: finimondo-web
+    runtime: node
+    plan: free            # 무료 tier — 15분 무활동 시 sleep(콜드스타트), 월 750시간
+    region: oregon        # 필요 시 singapore 등으로 변경 (한국 사용자면 singapore가 지연 유리)
+    branch: master        # uno-deathmatch 로컬 기본 브랜치 = master (다른 repo는 main)
+
+    # 빌드: 서버+클라이언트 의존성 설치 후 클라이언트 빌드 → client/dist 생성
+    buildCommand: npm run install:all && npm run build
+    # 실행: 루트 start → npm start --prefix server → node src/index.js
+    startCommand: npm start
+
+    # 헬스체크: 서버가 '*'에서 index.html(200)을 서빙하므로 루트로 확인
+    healthCheckPath: /
+
+    autoDeploy: true      # main push 시 자동 재배포 (원치 않으면 false)
+
+    envVars:
+      # Render가 PORT를 자동 주입 → 서버가 process.env.PORT 사용(코드 이미 대응).
+      # 여기서 PORT를 수동 지정하지 말 것.
+      - key: NODE_VERSION
+        value: "20"       # Vite5는 Node18+ 필요. 20 LTS 고정(로컬 24와 무관하게 재현성 확보)
+      - key: NODE_ENV
+        value: production
