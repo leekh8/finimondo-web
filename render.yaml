@@ -11,7 +11,9 @@ services:
     branch: master        # uno-deathmatch 로컬 기본 브랜치 = master (다른 repo는 main)
 
     # 빌드: 서버+클라이언트 의존성 설치 후 클라이언트 빌드 → client/dist 생성
-    buildCommand: npm run install:all && npm run build
+    # --include=dev 필수: NODE_ENV=production이면 npm이 devDependencies(vite 등)를
+    # 건너뛰어 "vite: not found"로 빌드 실패함. build 도구는 devDep이므로 강제 포함.
+    buildCommand: npm install --prefix server --include=dev && npm install --prefix client --include=dev && npm run build
     # 실행: 루트 start → npm start --prefix server → node src/index.js
     startCommand: npm start
 
