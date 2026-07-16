@@ -1,13 +1,15 @@
-# 카드 데스매치 (UNO No Mercy 온라인)
+# Finimondo — 종말의 카드게임
 
-친구들과 즐기는 **UNO No Mercy** PWA 온라인 게임. 앱 스토어 없이 링크만으로 공유 가능.
+친구들과 즐기는 **Finimondo** PWA 온라인 카드게임. 앱 스토어 없이 링크만으로 공유 가능.
+
+> **Finimondo**(이탈리아어 "세상의 끝") — 종말·카타클리즘 테마의 온라인 카드게임 브랜드.
 
 ## Why (만든 이유)
 
-오프라인에서만 즐기던 **UNO No Mercy(데스매치)** 룰을, 멀리 있는 친구들과도 온라인으로 같이 하고 싶어서 시작한 개인 프로젝트.
+오프라인에서만 즐기던 공격적인 카드 배틀 룰을, 멀리 있는 친구들과도 온라인으로 같이 하고 싶어서 시작한 개인 프로젝트.
 앱 설치/스토어 심사 없이 **URL 한 줄만 공유하면 바로 플레이**되는 것을 목표로 한다. 모바일에서는 PWA로 홈화면에 추가해 네이티브 앱처럼 쓸 수 있다.
 
-> **UNO No Mercy란?** 일반 UNO에 +6/+10 등 강력한 드로우 카드와 손패 25장 초과 즉시 탈락 룰이 더해진 변형. 손패가 폭발적으로 늘어나고 탈락이 빈번한, 더 공격적인("자비 없는") 버전이다.
+> **어떤 게임?** 일반 카드게임에 +6/+10 등 강력한 드로우 카드와 손패 25장 초과 즉시 탈락 룰이 더해진 변형. 손패가 폭발적으로 늘어나고 탈락이 빈번한, 더 공격적인("자비 없는") 종말형 배틀이다. (UNO No Mercy 계열 룰 기반)
 
 ## Status
 
@@ -124,7 +126,7 @@ npm start             # http://localhost:3001
 | **턴 타이머** | 25초, 10초 남으면 경고음 |
 | **PWA 설치** | iOS/Android 홈화면 추가 지원 |
 
-## 게임 룰 (UNO No Mercy 공식)
+## 게임 룰 (Finimondo)
 
 | 규칙 | 내용 |
 |------|------|
@@ -138,12 +140,12 @@ npm start             # http://localhost:3001
 | **10카드** | 본인 한 번 더 진행 |
 | **턴 타임** | 25초 (10초 남으면 경고, 0초 → 자동 드로우) |
 
-### 카드 종류 (총 168장)
+### 카드 종류 (총 140장)
 
 - **숫자 카드** 0–10 (각 색상 2장, 0은 1장)
-- **액션 카드**: Skip, Reverse, Draw Two (+2)
-- **와일드 카드**: Wild, Wild Draw Four (+4), Wild Draw Six (+6)
-- **No Mercy 카드**: Wild Draw Ten (+10), Wild Reverse Draw Four (↺+4), Color Roulette, Discard All, Skip All
+- **액션 카드**: Skip(Salto), Reverse(Inverti), Draw Two(Pesca 2)
+- **와일드 카드**: Wild(Caos), Wild Draw Four(+4), Wild Draw Six(+6)
+- **카타클리즘 카드**: Wild Draw Ten(+10), Wild Reverse Draw Four(↺+4), Color Roulette, Discard All(Purga), Skip All(Apocalisse)
 
 ## Roadmap (게임 완성을 향한 다음 단계)
 

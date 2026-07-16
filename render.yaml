@@ -1,4 +1,4 @@
-# Render Blueprint — UNO 데스매치 (finimondo-web)
+# Render Blueprint — Finimondo (finimondo-web)
 # 단일 Web Service: Node ws 서버가 WebSocket + 빌드된 클라이언트(정적)를 같은 포트에서 서빙.
 # Render는 이 파일을 읽어 Blueprint로 서비스를 생성한다.
 # 참고: https://render.com/docs/blueprint-spec
