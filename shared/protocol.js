@@ -89,6 +89,9 @@ export const ERROR_CODE = {
   NEED_SWAP_CHOICE:     'NEED_SWAP_CHOICE',
   NOT_HOST:             'NOT_HOST',
   MIN_PLAYERS:          'MIN_PLAYERS',
+  INVALID_NAME:         'INVALID_NAME',
+  RECONNECT_FAILED:     'RECONNECT_FAILED',
+  RATE_LIMITED:         'RATE_LIMITED',
 };
 
 // ==============================
@@ -103,4 +106,5 @@ export const CONFIG = {
   MAX_PLAYERS:       8,
   INITIAL_HAND_SIZE: 7,
   CHAT_MAX_LEN:      80,   // 채팅 최대 글자
+  NAME_MAX_LEN:      12,   // 플레이어 이름 최대 글자 (초과분은 잘라서 수용)
 };

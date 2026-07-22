@@ -8,7 +8,33 @@ function botDelay() {
   return BOT_MIN_DELAY + Math.floor(Math.random() * (BOT_MAX_DELAY - BOT_MIN_DELAY));
 }
 
+// ── 연결 단위 rate limit ────────────────────────────────
+// 토큰을 128bit로 올려도 초당 수천 건의 요청 자체가 무료 인스턴스엔 DoS다.
+// 토큰 버킷: 평시 초당 MSG_PER_SEC, 순간 버스트는 MSG_BURST까지 허용
+// (카드 연타·재연결 직후 몰림은 통과, 자동화 폭주는 차단).
+const MSG_PER_SEC        = 20;
+const MSG_BURST          = 40;
+const RECONNECT_FAIL_MAX = 5;   // 토큰 오답 허용 횟수 → 초과 시 연결 종료
+
+function allowMessage(ws) {
+  const now = Date.now();
+  if (ws._rlTokens === undefined) { ws._rlTokens = MSG_BURST; ws._rlAt = now; }
+  ws._rlTokens = Math.min(MSG_BURST, ws._rlTokens + ((now - ws._rlAt) / 1000) * MSG_PER_SEC);
+  ws._rlAt     = now;
+  if (ws._rlTokens < 1) return false;
+  ws._rlTokens -= 1;
+  return true;
+}
+
+/** 이름 정규화 — 공백 축약 + 길이 제한. 초과분은 거절 대신 잘라서 수용. */
+function cleanName(raw) {
+  return String(raw ?? '').replace(/\s+/g, ' ').trim().slice(0, CONFIG.NAME_MAX_LEN);
+}
+
 export function handleMessage(ws, rawData, rooms, clients) {
+  if (!allowMessage(ws))
+    return send(ws, EVENT.ERROR, { code: ERROR_CODE.RATE_LIMITED, message: '요청이 너무 많습니다' });
+
   let msg;
   try { msg = JSON.parse(rawData); }
   catch { return send(ws, EVENT.ERROR, { message: '잘못된 JSON' }); }
@@ -29,8 +55,9 @@ export function handleMessage(ws, rawData, rooms, clients) {
 }
 
 function onCreateRoom(ws, payload, rooms, clients) {
-  const { playerName, maxPlayers = CONFIG.DEFAULT_PLAYERS, solo = false, botCount = 0 } = payload;
-  if (!playerName) return send(ws, EVENT.ERROR, { message: 'playerName 필요' });
+  const { maxPlayers = CONFIG.DEFAULT_PLAYERS, solo = false, botCount = 0 } = payload;
+  const playerName = cleanName(payload.playerName);
+  if (!playerName) return send(ws, EVENT.ERROR, { code: ERROR_CODE.INVALID_NAME, message: '이름을 입력해주세요' });
 
   // ── 혼자 하기(AI 봇) ─────────────────────────────────────
   if (solo) return onCreateSolo(ws, playerName, botCount, rooms, clients);
@@ -64,7 +91,9 @@ function onCreateSolo(ws, playerName, botCount, rooms, clients) {
 }
 
 function onJoinRoom(ws, payload, rooms, clients) {
-  const { roomId, playerName } = payload;
+  const { roomId } = payload;
+  const playerName = cleanName(payload.playerName);
+  if (!playerName) return send(ws, EVENT.ERROR, { code: ERROR_CODE.INVALID_NAME, message: '이름을 입력해주세요' });
   const room = rooms.get(roomId?.toUpperCase());
   if (!room) return send(ws, EVENT.ERROR, { code: ERROR_CODE.ROOM_NOT_FOUND, message: '방을 찾을 수 없습니다' });
   const playerId = genId();
@@ -142,7 +171,15 @@ function onChat(ws, payload, rooms, clients) {
 function onReconnect(ws, payload, rooms, clients) {
   const { roomId, playerId, token } = payload;
   const room = rooms.get(roomId?.toUpperCase());
-  if (!room || !room.verifyToken(playerId, token)) return send(ws, EVENT.ERROR, { message: '재접속 실패' });
+  if (!room || !room.verifyToken(playerId, token)) {
+    // 토큰 추측 시도 차단: 같은 연결에서 반복 실패하면 끊는다.
+    // (rate limit만으론 재연결로 리셋하며 계속 시도할 수 있음)
+    ws._reconnectFails = (ws._reconnectFails ?? 0) + 1;
+    send(ws, EVENT.ERROR, { code: ERROR_CODE.RECONNECT_FAILED, message: '재접속 실패' });
+    if (ws._reconnectFails >= RECONNECT_FAIL_MAX) ws.close(4003, 'too many reconnect attempts');
+    return;
+  }
+  ws._reconnectFails = 0;
   clients.set(ws, { playerId, roomId: room.id });
   room.setConnected(playerId, true);
   if (room.game) {
