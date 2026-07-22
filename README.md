@@ -40,7 +40,8 @@
 
 | 영역 | 기술 |
 |------|------|
-| **서버** | Node.js, Express, `ws` (WebSocket) |
+| **런타임(배포)** | Cloudflare Workers + Durable Objects (방 1개 = DO 1개) |
+| **런타임(로컬/대체)** | Node.js, Express, `ws` (WebSocket) |
 | **클라이언트** | React 18, Vite, Tailwind CSS |
 | **상태관리** | Zustand |
 | **PWA** | vite-plugin-pwa (Workbox) |
@@ -52,10 +53,15 @@ uno-deathmatch/
 ├── package.json                 # 모노레포 루트 (워크스페이스 스크립트)
 ├── shared/
 │   └── protocol.js              # Action/Event 상수, 카드 타입, 설정 공유
+├── worker/                      # Cloudflare 배포용 배선 (게임 로직은 server/game 재사용)
+│   ├── wrangler.jsonc           # Workers 설정 + DO 바인딩 + 정적 자산
+│   └── src/
+│       ├── index.js             # 라우팅: /api/room, /ws → DO, 그 외 정적
+│       └── game-room.js         # GameRoom Durable Object (상태=storage, 타이머=alarm)
 ├── server/
 │   └── src/
 │       ├── game/
-│       │   ├── cards.js         # 덱 생성 (168장)
+│       │   ├── cards.js         # 덱 생성 (140장)
 │       │   ├── rules.js         # 룰 엔진 (낼 수 있는지 검증, 효과 계산)
 │       │   ├── state.js         # 게임 상태머신 (서버 권위)
 │       │   └── room.js          # 방 생성/참가/관리 + 토큰 재접속
@@ -85,33 +91,38 @@ uno-deathmatch/
 ## Run (빠른 시작 — 개발)
 
 ```bash
-# 의존성 설치 (server + client)
 npm run install:all
 
-# 터미널 A — WebSocket 게임 서버
-npm run dev:server    # ws://localhost:3001
+# 터미널 A — Worker (API + WebSocket + DO)
+npm run dev:worker    # http://localhost:8787
 
-# 터미널 B — 클라이언트 개발 서버
+# 터미널 B — 클라이언트 개발 서버 (/api·/ws는 8787로 프록시)
 npm run dev:client    # http://localhost:5173
 ```
 
-### 배포 (프로덕션)
+> Node/Express 판(`npm run dev:server`, `npm start`)도 그대로 남아 있다.
+> 게임 로직(`server/src/game/`)은 두 런타임이 **같은 모듈을 공유**하며, 달라지는 건
+> 상태 보관·타이머·연결 관리 세 가지 배선뿐이다.
+
+### 배포 (Cloudflare)
 
 ```bash
-# 클라이언트 빌드 후 서버에서 정적 파일 포함 서빙
-npm run build
-npm start             # http://localhost:3001
+npx wrangler login          # 최초 1회 (브라우저 승인)
+npm run deploy              # 클라이언트 빌드 → wrangler deploy
 ```
 
-서버 URL을 친구들에게 공유하면 바로 플레이 가능.
-모바일에서 "홈화면에 추가" 하면 네이티브 앱처럼 사용 가능 (PWA).
+무료 플랜으로 동작한다. **정적 자산 요청은 무제한·무과금**이고, 요청 쿼터(10만/일)는
+WebSocket 인입 메시지를 20:1로 환산해 차감한다. keepalive ping은
+`setWebSocketAutoResponse`가 런타임에서 처리해 DO를 깨우지 않으므로 쿼터를 쓰지 않는다.
+
+배포된 URL을 공유하면 바로 플레이 가능. 모바일에서 "홈화면에 추가" 시 PWA로 동작.
 
 ### 환경변수
 
 | 변수 | 기본값 | 설명 |
 |------|--------|------|
-| `PORT` | `3001` | 서버 포트 |
-| `VITE_WS_URL` | 자동감지 | WebSocket 서버 URL (개발: `ws://localhost:3001`) |
+| `PORT` | `3001` | Node 서버 포트 (Node 판 전용) |
+| `VITE_API_URL` | 같은 오리진 | 클라이언트를 별도 호스팅할 때만 지정 (예: `https://finimondo.workers.dev`) |
 
 ## 주요 기능
 
@@ -151,9 +162,10 @@ npm start             # http://localhost:3001
 
 1. **실플레이 검증 & 버그 잡기** — 여러 디바이스/브라우저로 한 판 끝까지 돌려 보고 룰 엔진(드로우 중첩·탈락·교환) 엣지 케이스 점검.
 2. ~~룰 엔진 테스트 추가~~ — ✅ 완료(2026-07-13). Vitest 36개로 `canPlay`·`computeEffects`·`canStackOnDraw`·덱 구성·탈락 커버. **이 과정에서 `canPlay` 버그 수정**: 숫자 카드가 색·값과 무관하게 아무 숫자 위에나 놓이던 문제(`card.type === topCard.type`가 숫자끼리 항상 참) → 값이 같을 때만 매치하도록 수정. `state.js` 상태머신 테스트는 다음 단계.
-3. **재접속·끊김 처리 강화** — 토큰 재접속을 실네트워크 환경에서 검증하고, 호스트 이탈·전원 이탈 시 방 정리 로직 보강.
-4. **실서버 배포** — 친구 공유용으로 실제 호스팅(URL 공유) + HTTPS/WSS 적용.
-5. **플레이 경험 개선** — 봇/AI 상대 추가, 전적·간단 랭킹, 관전 모드 등 검토.
+3. ~~재접속 토큰 보안~~ — ✅ 완료(2026-07-22). `genCode(len)`이 `len` 인자를 무시하고 항상 6자(24bit)만 반환해, 16자를 의도한 재접속 토큰이 방 코드와 같은 강도였다. 이 토큰만 알면 남의 자리로 재접속해 **상대 손패까지 볼 수 있었다**. 128bit로 분리하고(`genToken`), rate limit·재접속 시도 제한·이름 검증·방 코드 충돌 회피를 함께 추가.
+4. ~~카드 소실 버그~~ — ✅ 완료(2026-07-22). `_replenishDeck`이 `this.deck = shuffle(discardPile)`로 **대입**해, 덱 보충 시점에 남아 있던 카드(최대 4장)가 매번 조용히 사라졌다. 긴 판에서 덱이 말라붙는 원인. 400판 카드 총량 불변식 테스트로 회귀 차단.
+5. ~~실서버 배포~~ — ✅ 완료(2026-07-22). Cloudflare Workers + Durable Objects. 무료 플랜에서 **콜드스타트·sleep 없이** 상시 동작(종전 Render 무료는 15분 무활동 시 spin down).
+6. **플레이 경험 개선** — 전적·간단 랭킹, 관전 모드 등 검토. (봇/AI 상대는 구현 완료)
 
 ---
 

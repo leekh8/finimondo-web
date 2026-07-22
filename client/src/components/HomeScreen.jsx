@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ACTION } from '../../../shared/protocol.js';
 import { useGameStore } from '../store/gameStore.js';
-import { useWebSocket } from '../hooks/useWebSocket.js';
+import { useWebSocket, requestRoomCode } from '../hooks/useWebSocket.js';
 import RulesModal from './RulesModal.jsx';
 
 // 초대 링크(?room=ABC123)로 진입한 경우 방 코드를 읽어 검증한다.
@@ -25,37 +25,40 @@ export default function HomeScreen() {
   const [maxP,   setMaxP]   = useState(5);
   const [soloTotal, setSoloTotal] = useState(4);   // 사람1 + 봇(soloTotal-1)
   const [showRules, setShowRules] = useState(false);
+  const [busy,      setBusy]      = useState(false);
 
-  const { emit }   = useWebSocket();
+  const { connectAndEmit } = useWebSocket();
   const setMyName  = useGameStore(s => s.setMyName);
+  const notify     = useGameStore(s => s.notify);
 
-  function handleCreate() {
-    const n = name.trim();
-    if (!n) return;
-    setMyName(n);                                           // ✅ Zustand 정상 업데이트
-    emit(ACTION.CREATE_ROOM, { playerName: n, maxPlayers: maxP });
+  // 방마다 서버 인스턴스가 따로 뜨는 구조라, 만들기 전에 방 코드부터 발급받아야 한다.
+  async function startNewRoom(n, payload) {
+    const room = await requestRoomCode();
+    await connectAndEmit(room, ACTION.CREATE_ROOM, { playerName: n, ...payload });
   }
 
-  function handleJoin() {
+  async function handleSubmit() {
     const n = name.trim();
-    const r = roomId.trim().toUpperCase();
-    if (!n || !r) return;
+    if (!n || busy) return;
+
     setMyName(n);
-    emit(ACTION.JOIN_ROOM, { playerName: n, roomId: r });
-  }
-
-  function handleSolo() {
-    const n = name.trim();
-    if (!n) return;
-    setMyName(n);
-    // 사람 1 + 봇(soloTotal-1) — 서버가 봇을 채우고 자동 시작한다
-    emit(ACTION.CREATE_ROOM, { playerName: n, solo: true, botCount: soloTotal - 1 });
-  }
-
-  function handleSubmit() {
-    if (tab === 'create') return handleCreate();
-    if (tab === 'solo')   return handleSolo();
-    return handleJoin();
+    setBusy(true);
+    try {
+      if (tab === 'create') {
+        await startNewRoom(n, { maxPlayers: maxP });
+      } else if (tab === 'solo') {
+        // 사람 1 + 봇(soloTotal-1) — 서버가 봇을 채우고 자동 시작한다
+        await startNewRoom(n, { solo: true, botCount: soloTotal - 1 });
+      } else {
+        const r = roomId.trim().toUpperCase();
+        if (!r) return;
+        await connectAndEmit(r, ACTION.JOIN_ROOM, { playerName: n, roomId: r });
+      }
+    } catch (e) {
+      notify(e.message || '연결에 실패했습니다', 'error');
+    } finally {
+      setBusy(false);
+    }
   }
 
   function onKey(e) {
@@ -150,9 +153,11 @@ export default function HomeScreen() {
         <button
           className="btn-primary w-full py-4 text-lg font-black"
           onClick={handleSubmit}
-          disabled={!name.trim() || (tab === 'join' && roomId.trim().length < 6)}
+          disabled={busy || !name.trim() || (tab === 'join' && roomId.trim().length < 6)}
         >
-          {tab === 'create' ? '방 만들기 →' : tab === 'solo' ? '🤖 AI와 시작 →' : '참가하기 →'}
+          {busy
+            ? '연결 중…'
+            : tab === 'create' ? '방 만들기 →' : tab === 'solo' ? '🤖 AI와 시작 →' : '참가하기 →'}
         </button>
       </div>
 

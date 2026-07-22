@@ -39,6 +39,16 @@ export const EVENT = {
 };
 
 // ==============================
+// Keepalive 프레임 (문자열 완전 일치가 필요)
+// ==============================
+// Cloudflare Durable Objects의 setWebSocketAutoResponse는 들어온 메시지를
+// "문자열 그대로" 비교해 자동 응답한다(= DO를 깨우지 않고 과금도 되지 않음).
+// 클라이언트가 키 순서·공백이 1바이트라도 다른 JSON을 보내면 자동응답이 빗나가
+// DO가 매번 깨어나므로, 양쪽이 반드시 이 상수를 그대로 써야 한다.
+export const PING_FRAME = JSON.stringify({ action: ACTION.PING, payload: {} });
+export const PONG_FRAME = JSON.stringify({ event: EVENT.PONG, data: {} });
+
+// ==============================
 // 카드 색상
 // ==============================
 export const COLOR = {

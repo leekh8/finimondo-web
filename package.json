@@ -8,6 +8,9 @@
     "dev:server":  "npm run dev --prefix server",
     "dev:client":  "npm run dev --prefix client",
     "build":       "npm run build --prefix client",
-    "start":       "npm start --prefix server"
+    "start":       "npm start --prefix server",
+
+    "dev:worker":  "wrangler dev --config worker/wrangler.jsonc",
+    "deploy":      "npm run build && wrangler deploy --config worker/wrangler.jsonc"
   }
 }

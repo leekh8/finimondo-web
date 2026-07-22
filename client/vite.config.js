@@ -22,9 +22,11 @@ export default defineConfig({
     }),
   ],
   server: {
+    // 개발 중에도 클라이언트가 "같은 오리진"만 호출하게 만든다.
+    // (절대 URL로 8787을 직접 부르면 CORS 프리플라이트를 따로 처리해야 함)
     proxy: {
-      // WebSocket: /ws 경로로 프록시 (개발 시)
-      '/ws': { target: 'ws://localhost:3001', ws: true, changeOrigin: true },
+      '/ws':  { target: 'ws://localhost:8787',   ws: true, changeOrigin: true },
+      '/api': { target: 'http://localhost:8787', changeOrigin: true },
     },
   },
 });

@@ -1,76 +1,109 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { ACTION, EVENT } from '../../../shared/protocol.js';
+import { useEffect, useCallback, useRef } from 'react';
+import { ACTION, EVENT, PING_FRAME } from '../../../shared/protocol.js';
 import { useGameStore } from '../store/gameStore.js';
 
 /**
- * 개발: Vite가 5173에서 /ws 경로를 3001로 프록시
- * 프로덕션: 같은 호스트 루트로 연결 (서버가 클라이언트도 서빙)
+ * 연결 모델
+ * ----------
+ * 방 하나 = Durable Object 하나이므로, 접속 시점에 이미 방 코드를 알아야 한다.
+ * (예전 Node 단일 서버는 아무 데나 붙은 뒤 CREATE/JOIN을 보내면 됐다)
+ *
+ *   방 만들기 / 혼자 하기 : POST /api/room 으로 코드를 발급받고 → 그 방에 연결
+ *   방 참가              : 사용자가 입력한 코드로 바로 연결
+ *
+ * 그래서 연결은 마운트 시점이 아니라 "홈 화면에서 버튼을 누른 시점"에 시작한다.
  */
-function getWsUrl() {
-  if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL;
-  if (import.meta.env.DEV) return 'ws://localhost:3001';
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${proto}//${location.host}`;
+
+let wsInstance     = null;
+let currentRoom    = null;
+let listeners      = new Set();
+let reconnectTimer = null;
+let retryCount     = 0;
+let storeRef       = { current: null };
+
+// 기본은 항상 같은 오리진(''), 개발에서는 Vite 프록시가 /api·/ws를
+// wrangler dev(8787)로 넘긴다 → CORS를 다룰 일이 없다.
+// 클라이언트만 따로 호스팅하는 경우에만 VITE_API_URL로 덮어쓴다.
+function apiBase() {
+  return import.meta.env.VITE_API_URL ?? '';
 }
 
-const WS_URL = getWsUrl();
+function wsUrl(room) {
+  const base = apiBase();
+  if (base) return `${base.replace(/^http/, 'ws')}/ws?room=${room}`;
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${location.host}/ws?room=${room}`;
+}
 
-let wsInstance  = null;
-let listeners   = new Set();
-let reconnectTimer = null;
+/** 새 방 코드 발급 — DO는 첫 연결 때 만들어지므로 여기선 코드만 받는다 */
+export async function requestRoomCode() {
+  const res = await fetch(`${apiBase()}/api/room`, { method: 'POST' });
+  if (!res.ok) throw new Error(`방 코드 발급 실패 (${res.status})`);
+  const { roomId } = await res.json();
+  return roomId;
+}
 
-function connect(storeRef) {
-  if (wsInstance && wsInstance.readyState <= 1) return; // 이미 연결 중
-  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+function openSocket(room) {
+  return new Promise((resolve, reject) => {
+    if (wsInstance && wsInstance.readyState === 1 && currentRoom === room) return resolve(wsInstance);
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
 
-  console.log('[WS] 연결 시도:', WS_URL);
-  const ws = new WebSocket(WS_URL);
-  wsInstance = ws;
-
-  ws.onopen = () => {
-    console.log('[WS] 연결 성공');
-    // 게임 중 새로고침/재접속 처리
-    const { myId, myToken, roomId } = storeRef.current;
-    if (myId && myToken && roomId) {
-      ws.send(JSON.stringify({ action: ACTION.RECONNECT, payload: { roomId, playerId: myId, token: myToken } }));
+    // 이전 소켓을 닫기 전에 핸들러를 떼어낸다.
+    // 떼지 않으면 뒤늦게 도착한 onclose가 방금 만든 새 소켓 참조를 지우고
+    // 재연결 타이머까지 걸어버린다(방을 옮길 때 연결이 죽는 원인).
+    if (wsInstance) {
+      const old = wsInstance;
+      old.onopen = old.onmessage = old.onclose = old.onerror = null;
+      try { old.close(); } catch { /* 무시 */ }
     }
-  };
 
-  ws.onmessage = (e) => {
-    try {
-      const { event, data } = JSON.parse(e.data);
-      dispatch(event, data, storeRef.current);
-      listeners.forEach(fn => fn(event, data));
-    } catch (err) { console.error('[WS] 파싱 오류', err); }
-  };
+    const ws = new WebSocket(wsUrl(room));
+    wsInstance  = ws;
+    currentRoom = room;
 
-  ws.onclose = (ev) => {
-    console.warn('[WS] 연결 끊김 (code:', ev.code, ')— 3초 후 재시도');
-    wsInstance = null;
-    reconnectTimer = setTimeout(() => connect(storeRef), 3000);
-  };
+    ws.onopen = () => {
+      retryCount = 0;
+      // 끊겼다 붙은 경우에만 자리 복구 (최초 연결은 CREATE/JOIN이 뒤따른다)
+      const { myId, myToken, roomId } = storeRef.current ?? {};
+      if (myId && myToken && roomId === room) {
+        ws.send(JSON.stringify({ action: ACTION.RECONNECT, payload: { roomId, playerId: myId, token: myToken } }));
+      }
+      resolve(ws);
+    };
 
-  ws.onerror = () => {
-    // onclose가 이어서 호출됨 → 거기서 재연결
-    wsInstance = null;
-  };
+    ws.onmessage = (e) => {
+      try {
+        const { event, data } = JSON.parse(e.data);
+        dispatch(event, data, storeRef.current);
+        listeners.forEach(fn => fn(event, data));
+      } catch (err) { console.error('[WS] 파싱 오류', err); }
+    };
+
+    ws.onclose = () => {
+      if (wsInstance !== ws) return;      // 이미 다른 소켓으로 교체된 뒤라면 무시
+      wsInstance = null;
+      if (!currentRoom) return;
+      // 지수 백오프 — 서버가 죽어 있을 때 3초마다 무한 재시도하면 브라우저·서버 양쪽에 부담
+      const delay = Math.min(1000 * 2 ** retryCount++, 15_000);
+      reconnectTimer = setTimeout(() => openSocket(currentRoom).catch(() => {}), delay);
+    };
+
+    ws.onerror = () => reject(new Error('서버에 연결하지 못했습니다'));
+  });
 }
 
 export function useWebSocket() {
-  const store    = useGameStore();
-  const storeRef = useRef(store);
-  storeRef.current = store;
+  const store = useGameStore();
+  const ref   = useRef(store);
+  ref.current = store;
+  storeRef    = ref;
 
   useEffect(() => {
-    connect(storeRef);
-
-    // Ping — 연결 유지
+    // keepalive. 이 문자열은 서버(DO)의 자동응답과 바이트 단위로 일치해야
+    // Durable Object를 깨우지 않고(=과금 없이) 응답된다.
     const ping = setInterval(() => {
-      if (wsInstance?.readyState === 1) {
-        wsInstance.send(JSON.stringify({ action: ACTION.PING }));
-      }
+      if (wsInstance?.readyState === 1) wsInstance.send(PING_FRAME);
     }, 25_000);
-
     return () => clearInterval(ping);
   }, []);
 
@@ -88,11 +121,23 @@ export function useWebSocket() {
     }
   }, []);
 
-  return { emit, on };
+  /** 홈 화면 전용 — 방에 연결한 뒤 첫 액션까지 보낸다 */
+  const connectAndEmit = useCallback(async (room, action, payload = {}) => {
+    try {
+      const ws = await openSocket(room);
+      ws.send(JSON.stringify({ action, payload }));
+    } catch (e) {
+      currentRoom = null;   // 실패한 방으로 재시도 루프에 빠지지 않게
+      useGameStore.getState().notify(e.message || '연결 실패', 'error');
+    }
+  }, []);
+
+  return { emit, on, connectAndEmit };
 }
 
 // ── 서버 이벤트 → 스토어 업데이트 ──────────────────────
 function dispatch(event, data, store) {
+  if (!store) return;
   switch (event) {
     case EVENT.ROOM_CREATED:
       store.setMyInfo(data.playerId, store.myName, data.token, true);

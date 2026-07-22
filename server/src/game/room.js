@@ -28,6 +28,11 @@ export function genToken() {
   return randHex(16);
 }
 
+/** 플레이어 id — 같은 방 안에서만 유일하면 되지만 추측 가능할 이유는 없다 */
+export function genPlayerId() {
+  return randHex(6);
+}
+
 
 /**
  * Room — 방 하나의 전체 상태
@@ -91,6 +96,29 @@ export class Room {
   verifyToken(playerId, token) {
     const p = this.playerById(playerId);
     return p && p.token === token;
+  }
+
+  /**
+   * 영속화 대상 화이트리스트.
+   * Node 서버 쪽 handler가 room에 붙이는 _turnTimer/_botTimer(Timeout 객체)가
+   * 실려 들어가지 않도록 명시적으로 골라 담는다.
+   */
+  toJSON() {
+    return {
+      id:         this.id,
+      hostId:     this.hostId,
+      maxPlayers: this.maxPlayers,
+      players:    this.players,
+      status:     this.status,
+      createdAt:  this.createdAt,
+      game:       this.game,
+    };
+  }
+
+  static fromJSON(obj) {
+    const room = Object.assign(Object.create(Room.prototype), obj);
+    room.game  = obj.game ? GameState.fromJSON(obj.game) : null;
+    return room;
   }
 
   setConnected(playerId, connected) {

@@ -1,0 +1,26 @@
+{
+  "name": "finimondo",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-01",
+
+  // 빌드된 클라이언트를 그대로 서빙. 정적 자산 요청은 무료·무제한이라
+  // 요청 쿼터(10만/일)를 전혀 갉아먹지 않는다.
+  "assets": {
+    "directory": "../client/dist",
+    "binding": "ASSETS",
+    // React 라우팅용 SPA 폴백. 단 아래 두 경로는 폴백보다 Worker가 먼저 잡아야 한다.
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/ws", "/api/*"]
+  },
+
+  // 방 하나 = DO 인스턴스 하나
+  "durable_objects": {
+    "bindings": [{ "name": "GAME_ROOM", "class_name": "GameRoom" }]
+  },
+
+  // 무료 플랜은 SQLite 백엔드 DO만 지원한다 → new_sqlite_classes 필수.
+  // (new_classes로 선언하면 유료 플랜을 요구하며 배포가 거부된다)
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameRoom"] }],
+
+  "observability": { "enabled": true }
+}
