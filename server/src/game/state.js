@@ -62,7 +62,12 @@ export class GameState {
   _replenishDeck() {
     if (this.deck.length < 5 && this.discardPile.length > 1) {
       const top = this.discardPile.pop();
-      this.deck = shuffle(this.discardPile);
+      // 남아 있던 덱을 버린 더미와 "합쳐서" 섞는다.
+      // 종전에는 this.deck = shuffle(this.discardPile) 로 대입해버려,
+      // 보충 시점에 덱에 남아 있던 카드(최대 4장)가 매번 조용히 소멸했다.
+      // 긴 판에서 카드가 계속 줄어 덱이 마르고, _drawCards의 break 때문에
+      // 뽑기가 실패해도 아무 신호 없이 넘어가던 원인.
+      this.deck = shuffle([...this.discardPile, ...this.deck]);
       this.discardPile = [top];
     }
   }
