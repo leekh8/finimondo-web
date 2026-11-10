@@ -1,5 +1,8 @@
 {
   "name": "uno-deathmatch-client",
+  "engines": {
+    "node": ">=22"
+  },
   "version": "1.0.0",
   "type": "module",
   "scripts": {

@@ -26,6 +26,8 @@ services:
       # Render가 PORT를 자동 주입 → 서버가 process.env.PORT 사용(코드 이미 대응).
       # 여기서 PORT를 수동 지정하지 말 것.
       - key: NODE_VERSION
-        value: "20"       # Vite5는 Node18+ 필요. 20 LTS 고정(로컬 24와 무관하게 재현성 확보)
+        value: "22"       # Vite5는 Node18+ 필요. 22 LTS 고정(로컬과 무관하게 재현성 확보).
+        # 20.x 는 2026-04-30 지원 종료라 CVE-2026-111497(Brotli 디코더) 고침이
+        # 오지 않는다. 22 는 22.23.4 에서 고쳐졌고 "22" 고정이면 그 이상이 들어온다.
       - key: NODE_ENV
         value: production

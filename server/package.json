@@ -1,5 +1,8 @@
 {
   "name": "uno-deathmatch-server",
+  "engines": {
+    "node": ">=22"
+  },
   "version": "1.0.0",
   "type": "module",
   "main": "src/index.js",
