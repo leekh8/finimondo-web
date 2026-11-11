@@ -179,7 +179,7 @@ WebSocket 인입 메시지를 20:1로 환산해 차감한다. keepalive ping은
 2. ~~룰 엔진 테스트 추가~~ — ✅ 완료(2026-07-13). Vitest 36개로 `canPlay`·`computeEffects`·`canStackOnDraw`·덱 구성·탈락 커버. **이 과정에서 `canPlay` 버그 수정**: 숫자 카드가 색·값과 무관하게 아무 숫자 위에나 놓이던 문제(`card.type === topCard.type`가 숫자끼리 항상 참) → 값이 같을 때만 매치하도록 수정. `state.js` 상태머신 테스트는 다음 단계.
 3. ~~재접속 토큰 보안~~ — ✅ 완료(2026-07-22). `genCode(len)`이 `len` 인자를 무시하고 항상 6자(24bit)만 반환해, 16자를 의도한 재접속 토큰이 방 코드와 같은 강도였다. 이 토큰만 알면 남의 자리로 재접속해 **상대 손패까지 볼 수 있었다**. 128bit로 분리하고(`genToken`), rate limit·재접속 시도 제한·이름 검증·방 코드 충돌 회피를 함께 추가.
 4. ~~카드 소실 버그~~ — ✅ 완료(2026-07-22). `_replenishDeck`이 `this.deck = shuffle(discardPile)`로 **대입**해, 덱 보충 시점에 남아 있던 카드(최대 4장)가 매번 조용히 사라졌다. 긴 판에서 덱이 말라붙는 원인. 400판 카드 총량 불변식 테스트로 회귀 차단.
-5. **실서버 배포** — Render 로 떠 있다(`finimondo-web.onrender.com`, 2026-11-11 실측 200). 🛑 한동안 이 줄이 「✅ 완료(2026-07-22). Cloudflare Workers」로 적혀 있었는데 **그 배포는 한 적이 없다** (`finimondo.workers.dev` 응답 없음). 같은 README 의 Status 절과도 어긋났다. 남은 일은 Cloudflare 로 옮겨 무료 플랜 콜드스타트(실측 21초)를 없애는 것이다. 설정은 `worker/wrangler.jsonc` 에 준비돼 있고 `npm run deploy` 한 번이 남았다.
+5. **실서버 배포**: Render 로 떠 있다(`finimondo-web.onrender.com`, 2026-11-11 실측 200). 🛑 한동안 이 줄이 「✅ 완료(2026-07-22). Cloudflare Workers」로 적혀 있었는데 **그 배포는 한 적이 없다** (`finimondo.workers.dev` 응답 없음). 같은 README 의 Status 절과도 어긋났다. 남은 일은 Cloudflare 로 옮겨 무료 플랜 콜드스타트(실측 21초)를 없애는 것이다. 설정은 `worker/wrangler.jsonc` 에 준비돼 있고 `npm run deploy` 한 번이 남았다.
 6. **플레이 경험 개선** — 전적·간단 랭킹, 관전 모드 등 검토. (봇/AI 상대는 구현 완료)
 
 ---
